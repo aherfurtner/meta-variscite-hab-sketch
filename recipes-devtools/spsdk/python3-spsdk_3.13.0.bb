@@ -32,6 +32,7 @@ DEPENDS += " \
     python3-ruamel-yaml-native \
     python3-setuptools-scm-native \
     python3-sly-native \
+    python3-spsdk-pqc-native \
     python3-t61codec-native \
     python3-typing-extensions-native \
     python3-x690-native \
