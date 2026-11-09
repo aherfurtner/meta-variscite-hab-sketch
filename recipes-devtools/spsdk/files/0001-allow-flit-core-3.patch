@@ -1,0 +1,17 @@
+From: Variscite PoC <noreply@variscite.com>
+Subject: [PATCH] Allow flit_core 3 for the native Yocto build
+
+Wrynose provides flit_core 3.12.0. Its build backend successfully builds
+t61codec 1.0.1, but pyproject-build rejects the upstream <3 constraint
+before invoking it. Permit Flit 3 without changing the package source.
+
+Upstream-Status: Pending
+---
+diff --git a/pyproject.toml b/pyproject.toml
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -1,3 +1,3 @@
+ [build-system]
+-requires = ["flit_core >=2,<3"]
++requires = ["flit_core >=2,<4"]
+ build-backend = "flit_core.buildapi"
