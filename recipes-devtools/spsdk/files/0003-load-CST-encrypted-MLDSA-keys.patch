@@ -1,0 +1,83 @@
+From: Variscite PoC <noreply@variscite.com>
+Subject: [PATCH] crypto: load encrypted CST ML-DSA expanded keys
+
+Upstream-Status: Pending
+---
+diff --git a/spsdk/crypto/keys.py b/spsdk/crypto/keys.py
+index 623b335..3b5a17c 100644
+--- a/spsdk/crypto/keys.py
++++ b/spsdk/crypto/keys.py
+@@ -204,9 +204,16 @@ def _load_pem_private_key(data: bytes, password: bytes | None) -> Any:
+     :return: Loaded private key object (type depends on the key algorithm).
+     """
+     errors: list[str] = []
++    passphrase_error: SPSDKWrongKeyPassphrase | None = None
+ 
+     try:
+         return _crypto_load_private_key(SPSDKEncoding.PEM, data, password)
++    except SPSDKWrongKeyPassphrase as exc:
++        # cryptography may report a format error after decryption as a bad password.
++        # Let the optional legacy ML-DSA reader check before reporting this error.
++        if not IS_DILITHIUM_SUPPORTED:
++            raise
++        passphrase_error = exc
+     except (UnsupportedAlgorithm, ValueError) as exc:
+         errors.append(f"Standard crypto: {exc}")
+ 
+@@ -236,9 +243,13 @@ def _load_pem_private_key(data: bytes, password: bytes | None) -> Any:
+         return PrivateKeyMLDSA.parse(
+             data=data, password=password.decode("utf-8") if password else None
+         ).key
++    except SPSDKInvalidKeyType:
++        raise
+     except SPSDKError as exc:
+         errors.append(f"ML-DSA: {exc}")
+ 
++    if passphrase_error:
++        raise passphrase_error
+     error_details = "\n- ".join([""] + errors)
+     raise SPSDKError(f"Cannot load PEM private key. Attempted methods failed: {error_details}")
+ 
+@@ -3068,6 +3079,42 @@ if MLDSA_PUBLIC_KEY_TYPES:
+                     return cls(parsed_key)
+                 except (AttributeError, PQCError):
+                     pass
++                if password:
++                    from Crypto.Util.asn1 import DerOctetString
++                    from spsdk_pqc.pkcs_utils import unwrap_pkcs8
++                    from spsdk_pqc.pqc_asn import pem_2_der
++
++                    try:
++                        oid, wrapped_key = unwrap_pkcs8(
++                            pem_2_der(data), password=password.encode("utf-8")
++                        )
++                    except (PQCError, ValueError, TypeError):
++                        pass
++                    else:
++                        if oid.startswith(
++                            (
++                                spsdk_pqc.wrapper.ML_DSA_GROUP_OID + ".",
++                                spsdk_pqc.wrapper.ML_DSA_GROUP_OID_LEGACY + ".",
++                            )
++                        ):
++                            try:
++                                try:
++                                    key_data = DerOctetString().decode(wrapped_key).payload
++                                except ValueError:
++                                    key_data = wrapped_key
++                                parsed_key = LegacyMLDSAPrivateKey.parse(data=key_data)
++                                if parsed_key.__class__.__name__ != "MLDSAPrivateKey":
++                                    raise PQCError("Parsed PQC private key is not ML-DSA")
++                                logger.info(
++                                    "Legacy ML-DSA private key detected. SPSDK loaded this "
++                                    "expanded-secret format via spsdk_pqc compatibility mode."
++                                )
++                                return cls(parsed_key)
++                            except (AttributeError, PQCError, ValueError, TypeError) as exc:
++                                raise SPSDKInvalidKeyType(
++                                    "Decrypted ML-DSA private key has an invalid or "
++                                    "unsupported expanded-secret format"
++                                ) from exc
+             if native_nxp_error:
+                 raise native_nxp_error
+             raise SPSDKError("Could not parse key")

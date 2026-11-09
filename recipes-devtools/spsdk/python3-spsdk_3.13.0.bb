@@ -5,6 +5,7 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=863e3c0c79e2589ac9d16c3918e115d1"
 
 SRC_URI = "git://github.com/nxp-mcuxpresso/spsdk.git;protocol=https;branch=master \
            file://0002-build-only-the-AHAB-nxpimage-command.patch \
+           file://0003-load-CST-encrypted-MLDSA-keys.patch \
 "
 SRCREV = "e104adf55184fd6a987d42c506afbce4b9eae807"
 SETUPTOOLS_SCM_PRETEND_VERSION = "3.13.0"
