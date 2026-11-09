@@ -7,6 +7,10 @@ inherit deploy
 CST_CERTS_REV ?= "0b2c9c39fbc5020b5faf8c7f1d0db5381c680785"
 CST_CERTS_URI ?= "git://github.com/varigit/var-hab-certs.git;protocol=https;branch=master;rev=${CST_CERTS_REV}"
 
+# Experimental CST tree: ECC keys are in iMX9, ML-DSA-87 keys in iMX95.
+CST_CERTS_REV:imx95-var-dart = "9286059a8c6b2609f758e14443ea528460bb6d5a"
+CST_CERTS_URI:imx95-var-dart = "git://git@github.com/varigit-dev/var-hab-certs;protocol=ssh;branch=dev_master_RND-3127_mx95_add-pqc-pki;rev=${CST_CERTS_REV}"
+
 S = "${UNPACKDIR}/cst-certs"
 
 SRC_URI = "\
@@ -55,6 +59,12 @@ do_deploy() {
     echo "${CST_KEYPASS}" >> ${DEPLOYDIR}/imx-cst/keys/key_pass.txt
 
     do_deploy_hab_cfg
+}
+
+do_deploy:append:imx95-var-dart() {
+    # Add the PQC half without replacing the classical SRK table and fuse files.
+    install -m 0644 ${S}/iMX95/crts/*_mldsa87_*_crt.* ${DEPLOYDIR}/imx-cst/crts/
+    install -m 0600 ${S}/iMX95/keys/*_mldsa87_*_key.* ${DEPLOYDIR}/imx-cst/keys/
 }
 
 do_deploy:append:mx95-generic-bsp() {
