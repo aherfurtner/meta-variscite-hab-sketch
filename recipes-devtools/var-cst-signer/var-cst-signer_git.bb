@@ -7,9 +7,9 @@ LIC_FILES_CHKSUM = "file://LICENSE.txt;md5=1f6f1c0be32491a0c8d2915607a28f36"
 inherit deploy
 
 SRC_URI = "${CST_SIGNER};branch=${SRCBRANCH}"
-CST_SIGNER = "git://github.com/varigit/nxp-cst-signer.git;protocol=https"
-SRCBRANCH = "v3.0_var01"
-SRCREV = "25f0c9482af267710294af2fc996e3ba4dbf439b"
+CST_SIGNER = "git://git@github.com/varigit-dev/nxp-cst-signer.git;protocol=ssh"
+SRCBRANCH = "dev_v3.1_var01"
+SRCREV = "1b168527f04fc73d2ccdefd2ada1b5a53167dbd2"
 
 BOOT_TOOLS = "imx-boot-tools"
 
