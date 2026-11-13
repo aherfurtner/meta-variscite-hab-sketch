@@ -1,0 +1,85 @@
+## After the device successfully boots a signed image without generating any HAB
+## events, it is safe to **secure**, or **"close,"** the device. This is the final
+## step in the process. Once the fuse is blown, the chip will **only** load images
+## signed with the correct PKI tree.
+
+## Important Notes:
+## - This is a **One-Time Programmable (OTP) e-fuse**. Once written,
+## it **cannot be undone**, so make sure everything is correct before proceeding.
+
+## - If any of the previous steps were not performed correctly, the SOM
+## **will not boot** after this bit is written.
+
+CST_SRK_FUSE ?= "SRK_1_2_3_4_fuse.bin"
+CST_SRK_FUSE_PATH ?= "${DEPLOY_DIR_IMAGE}/imx-cst/crts/${CST_SRK_FUSE}"
+CST_SRK_FUSE_CMDS ?= "${CST_SRK_FUSE}.u-boot-cmds"
+
+print_warning1() {
+    echo "# Note: These are One-Time Programmable e-fuses. Once you write them you can't go back, so get it right the first time.
+"
+}
+
+print_warning2() {
+    echo "
+# After the device successfully boots a signed image without generating any HAB events, it is safe to secure, or 'close', the device.
+# This is the last step in the process. Once the fuse is blown, the chip does not load an image that has not been signed using the correct PKI tree.
+# Important notes:
+# - This is again a One-Time Programmable e-fuse. Once you write it you can't go back, so get it right the first time.
+# - If anything in the previous steps wasn't done correctly, the SOM will not boot after writing this bit.
+"
+}
+
+fuse_write_line() {
+    bank=$1
+    word=$2
+    value=$3
+    echo "fuse prog -y $bank $word $value"
+}
+
+create_fuse_cmds_mx8m() {
+    print_warning1 > ${fuse_log}
+    word=0
+    bank=6
+    for i in $(seq 0 7); do
+        if [ "$i" -eq "4" ]; then
+            bank=7
+            word=0
+        fi
+        offset=$(echo "$i * 4" | bc)
+        value=$(hexdump -s $offset -n 4  -e '/4 "0x"' -e '/4 "%X""\n"' ${cst_srk_fuse})
+        fuse_write_line $bank $word $value >> ${fuse_log}
+        word="$(expr $word + 1)"
+    done
+    print_warning2 >> ${fuse_log}
+    echo "fuse prog 1 3 0x02000000" >> ${fuse_log}
+}
+
+create_fuse_cmds() {
+    soc="$1"
+    cst_srk_fuse="$2"
+    fuse_log="$3"
+    if [ ! -f $cst_srk_fuse ]; then
+        bbfatal "Could not find '$cst_srk_fuse'"
+    fi
+
+    case ${soc} in
+      mx8m)
+        create_fuse_cmds_mx8m
+        ;;
+      *)
+        bbwarn "Unsupported SOC: ${soc}"
+        ;;
+    esac
+}
+
+do_compile:append() {
+    create_fuse_cmds ${SOC_FAMILY} ${CST_SRK_FUSE_PATH} ${UNPACKDIR}/${CST_SRK_FUSE_CMDS}
+}
+
+do_deploy:append() {
+    if [ -f ${UNPACKDIR}/${CST_SRK_FUSE_CMDS} ]; then
+        install -Dm 0755 ${UNPACKDIR}/${CST_SRK_FUSE_CMDS} ${DEPLOY_DIR_IMAGE}/${CST_SRK_FUSE_CMDS}
+    else
+        bbwarn "Could not deploy SRK fuse U-Boot commands"
+    fi
+}
