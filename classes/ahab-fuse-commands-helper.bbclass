@@ -10,7 +10,7 @@
 ## - If any of the previous steps were not performed correctly, the SOM
 ## **will not boot** after this bit is written.
 
-CST_SRK_FUSE ?= "SRK1234fuse.bin"
+CST_SRK_FUSE ?= "ahab_oem0_srk0_hash.txt"
 CST_SRK_FUSE_PATH ?= "${DEPLOY_DIR_IMAGE}/imx-cst/crts/${CST_SRK_FUSE}"
 CST_SRK_FUSE_CMDS ?= "${CST_SRK_FUSE}.u-boot-cmds"
 
@@ -82,10 +82,14 @@ create_fuse_cmds_mx95() {
 create_fuse_cmds() {
     soc="$1"
     cst_srk_fuse="$2"
+    cst_srk_fuse_name="$(basename "$cst_srk_fuse")"
+    cst_srk_fuse_bin="$(dirname "$cst_srk_fuse")/${cst_srk_fuse_name%.*}.bin"
     fuse_log="$3"
     if [ ! -f $cst_srk_fuse ]; then
         bbfatal "Could not find '$cst_srk_fuse'"
     fi
+    xxd -r -p "$cst_srk_fuse" > "$cst_srk_fuse_bin"
+    cst_srk_fuse="$cst_srk_fuse_bin"
 
     case ${soc} in
       mx8x)
@@ -106,9 +110,10 @@ create_fuse_cmds() {
     esac
 }
 
-do_compile:append() {
+do_generate_fuse_cmds() {
     create_fuse_cmds ${SOC_FAMILY} ${CST_SRK_FUSE_PATH} ${UNPACKDIR}/${CST_SRK_FUSE_CMDS}
 }
+addtask generate_fuse_cmds after do_compile before do_deploy
 
 do_deploy:append() {
     if [ -f ${UNPACKDIR}/${CST_SRK_FUSE_CMDS} ]; then
