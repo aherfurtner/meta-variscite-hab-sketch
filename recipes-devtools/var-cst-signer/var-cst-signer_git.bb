@@ -9,7 +9,7 @@ inherit deploy
 SRC_URI = "${CST_SIGNER};branch=${SRCBRANCH}"
 CST_SIGNER = "git://git@github.com/varigit-dev/nxp-cst-signer.git;protocol=ssh"
 SRCBRANCH = "dev_v3.1_var01"
-SRCREV = "1b168527f04fc73d2ccdefd2ada1b5a53167dbd2"
+SRCREV = "0a14399c99b94c3497c868a416e70c71af183520"
 
 BOOT_TOOLS = "imx-boot-tools"
 
